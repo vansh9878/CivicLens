@@ -1,0 +1,2233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project CivicLens — Civic Intelligence Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
+        rel="stylesheet" />
+    <!-- LEAFLET MAP CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg: #0B0E14;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --accent-a: #6366F1;
+            --accent-b: #A855F7;
+            --infra: #00D2FF;
+            --safety: #FF3131;
+            --sanit: #BFFF00;
+            --green: #00FF85;
+            --text: #E8EAF0;
+            --muted: rgba(255, 255, 255, 0.45);
+            --font-display: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px
+        }
+
+        body {
+            background: #0B0E14;
+            color: var(--text);
+            font-family: var(--font-body);
+            overflow-x: hidden;
+            line-height: 1.6;
+            cursor: none;
+        }
+
+        ::selection {
+            background: rgba(99, 102, 241, 0.35);
+            color: #fff
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0B0E14
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 10px
+        }
+
+        /* ─────────────────────────────────────────────
+           INTRO OVERLAY
+        ───────────────────────────────────────────── */
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #060810;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        #intro-overlay.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        #intro-map {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* dark style override for intro map */
+        #intro-map .leaflet-container {
+            background: #060810 !important;
+        }
+
+        .intro-vignette {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 20%, rgba(6, 8, 16, 0.55) 70%, rgba(6, 8, 16, 0.95) 100%);
+            pointer-events: none;
+        }
+
+        .intro-scan-line {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 3px,
+                    rgba(0, 0, 0, 0.07) 3px,
+                    rgba(0, 0, 0, 0.07) 4px);
+            pointer-events: none;
+            animation: scanMove 8s linear infinite;
+        }
+
+        @keyframes scanMove {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 0 100px;
+            }
+        }
+
+        .intro-crosshair {
+            position: absolute;
+            z-index: 5;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .intro-crosshair svg {
+            width: 120px;
+            height: 120px;
+            animation: crosshairSpin 6s linear infinite;
+        }
+
+        @keyframes crosshairSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .intro-crosshair-inner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #6366F1;
+            box-shadow: 0 0 20px #6366F1, 0 0 40px rgba(99, 102, 241, 0.5);
+            animation: corePulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes corePulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.4);
+                opacity: 0.7;
+            }
+        }
+
+        .intro-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            pointer-events: none;
+            z-index: 4;
+            animation: ringExpand 2s ease-out infinite;
+        }
+
+        .intro-ring:nth-child(2) {
+            animation-delay: 0.6s;
+        }
+
+        .intro-ring:nth-child(3) {
+            animation-delay: 1.2s;
+        }
+
+        @keyframes ringExpand {
+            0% {
+                width: 20px;
+                height: 20px;
+                opacity: 0.8;
+            }
+
+            100% {
+                width: 200px;
+                height: 200px;
+                opacity: 0;
+            }
+        }
+
+        .intro-logo {
+            position: absolute;
+            bottom: 52px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            animation: introLogoFade 1s ease 0.5s both;
+        }
+
+        @keyframes introLogoFade {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .intro-logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -.02em;
+            margin-bottom: 6px;
+        }
+
+        .intro-status {
+            font-size: 0.7rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .intro-status-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #00FF85;
+            animation: pulse 1.5s infinite;
+        }
+
+        .intro-progress {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .intro-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366F1, #A855F7);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .intro-corner {
+            position: absolute;
+            z-index: 6;
+            width: 20px;
+            height: 20px;
+            border-color: rgba(99, 102, 241, 0.5);
+            border-style: solid;
+            pointer-events: none;
+        }
+
+        .intro-corner.tl {
+            top: 24px;
+            left: 24px;
+            border-width: 1px 0 0 1px;
+        }
+
+        .intro-corner.tr {
+            top: 24px;
+            right: 24px;
+            border-width: 1px 1px 0 0;
+        }
+
+        .intro-corner.bl {
+            bottom: 24px;
+            left: 24px;
+            border-width: 0 0 1px 1px;
+        }
+
+        .intro-corner.br {
+            bottom: 24px;
+            right: 24px;
+            border-width: 0 1px 1px 0;
+        }
+
+        .intro-coords {
+            position: absolute;
+            top: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            color: rgba(99, 102, 241, 0.6);
+            font-family: monospace;
+            animation: introLogoFade 1s ease 0.5s both;
+        }
+
+        /* ─────────────────────────────────────────────
+           END INTRO
+        ───────────────────────────────────────────── */
+
+        /* CUSTOM CURSOR */
+        #cursor {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-a);
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width .2s var(--ease), height .2s var(--ease), background .2s;
+            mix-blend-mode: screen
+        }
+
+        #cursor-ring {
+            position: fixed;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: all .12s var(--ease);
+            mix-blend-mode: screen
+        }
+
+        body:hover #cursor {
+            opacity: 1
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 52px;
+            background: rgba(11, 14, 20, 0.6);
+            backdrop-filter: blur(24px) saturate(180%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all .4s var(--ease);
+        }
+
+        .nav-logo {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.15rem;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 36px;
+            list-style: none
+        }
+
+        .nav-links a {
+            font-size: .85rem;
+            color: var(--muted);
+            text-decoration: none;
+            font-weight: 400;
+            letter-spacing: .02em;
+            transition: color .25s var(--ease);
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 0;
+            height: 1px;
+            background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+            transition: width .3s var(--ease);
+        }
+
+        .nav-links a:hover {
+            color: #fff
+        }
+
+        .nav-links a:hover::after {
+            width: 100%
+        }
+
+        .nav-cta {
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            border: none;
+            border-radius: 10px;
+            padding: 9px 20px;
+            color: #fff;
+            font-family: var(--font-body);
+            font-size: .85rem;
+            font-weight: 500;
+            cursor: none;
+            transition: all .3s var(--ease);
+            box-shadow: 0 0 24px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 36px rgba(99, 102, 241, 0.5)
+        }
+
+        /* HERO */
+        #hero {
+            min-height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 0 24px;
+        }
+
+        #canvas-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0
+        }
+
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 100%);
+        }
+
+        .hero-glow-a {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+            top: -100px;
+            left: -100px;
+            z-index: 1;
+            animation: floatA 12s ease-in-out infinite;
+        }
+
+        .hero-glow-b {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.14) 0%, transparent 70%);
+            bottom: -50px;
+            right: -80px;
+            z-index: 1;
+            animation: floatB 15s ease-in-out infinite;
+        }
+
+        @keyframes floatA {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1)
+            }
+
+            50% {
+                transform: translate(60px, 40px) scale(1.08)
+            }
+        }
+
+        @keyframes floatB {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1)
+            }
+
+            50% {
+                transform: translate(-40px, -60px) scale(1.1)
+            }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: .75rem;
+            font-weight: 500;
+            color: rgba(168, 85, 247, 0.9);
+            letter-spacing: .06em;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp .8s var(--ease) .2s forwards;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-b);
+            animation: pulse 2s infinite
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .5;
+                transform: scale(1.5)
+            }
+        }
+
+        .hero-title {
+            font-family: var(--font-display);
+            font-size: clamp(3.5rem, 8vw, 7rem);
+            font-weight: 800;
+            line-height: .95;
+            letter-spacing: -.04em;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp .9s var(--ease) .45s forwards;
+        }
+
+        .hero-title span {
+            display: block;
+            background: linear-gradient(135deg, #fff 0%, #a0a8d0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-title .grad {
+            background: linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #E879F9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-sub {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: var(--muted);
+            font-weight: 300;
+            max-width: 560px;
+            line-height: 1.7;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp .8s var(--ease) .7s forwards;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp .8s var(--ease) .9s forwards;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            border: none;
+            border-radius: 14px;
+            padding: 15px 32px;
+            color: #fff;
+            font-family: var(--font-body);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: none;
+            transition: all .35s var(--ease);
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.35), 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .btn-primary:hover::before {
+            opacity: 1
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 60px rgba(99, 102, 241, 0.55), 0 16px 48px rgba(0, 0, 0, 0.5)
+        }
+
+        .btn-arrow {
+            display: inline-block;
+            transition: transform .3s var(--ease)
+        }
+
+        .btn-primary:hover .btn-arrow {
+            transform: translateX(4px)
+        }
+
+        .hero-cats {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp .8s var(--ease) 1.1s forwards;
+        }
+
+        .cat-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 100px;
+            padding: 5px 14px;
+            font-size: .78rem;
+            color: rgba(255, 255, 255, 0.5);
+            transition: all .3s var(--ease);
+        }
+
+        .cat-chip:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            transform: translateY(-2px)
+        }
+
+        .cat-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%
+        }
+
+        .scroll-hint {
+            position: absolute;
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: fadeUp .8s var(--ease) 1.4s forwards;
+        }
+
+        .scroll-hint span {
+            font-size: .7rem;
+            letter-spacing: .15em;
+            color: rgba(255, 255, 255, 0.25);
+            text-transform: uppercase
+        }
+
+        .scroll-mouse {
+            width: 22px;
+            height: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        .scroll-wheel {
+            width: 3px;
+            height: 8px;
+            background: linear-gradient(180deg, var(--accent-a), transparent);
+            border-radius: 3px;
+            margin-top: 5px;
+            animation: scrollWheel 2s var(--ease) infinite;
+        }
+
+        @keyframes scrollWheel {
+            0% {
+                transform: translateY(0);
+                opacity: 1
+            }
+
+            100% {
+                transform: translateY(14px);
+                opacity: 0
+            }
+        }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        /* SECTIONS COMMON */
+        section {
+            position: relative;
+            padding: 120px 52px
+        }
+
+        .section-label {
+            font-size: .72rem;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--accent-a);
+            font-weight: 500;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::before {
+            content: '';
+            display: block;
+            width: 28px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--accent-a), transparent);
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 4vw, 3.2rem);
+            font-weight: 700;
+            letter-spacing: -.03em;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+
+        .section-title .grad {
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-sub {
+            max-width: 520px;
+            color: var(--muted);
+            font-size: 1.05rem;
+            font-weight: 300;
+            line-height: 1.75
+        }
+
+        /* REVEAL */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity .7s var(--ease), transform .7s var(--ease)
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        .reveal-delay-1 {
+            transition-delay: .1s
+        }
+
+        .reveal-delay-2 {
+            transition-delay: .2s
+        }
+
+        .reveal-delay-3 {
+            transition-delay: .3s
+        }
+
+        .reveal-delay-4 {
+            transition-delay: .4s
+        }
+
+        /* ABOUT */
+        #about {
+            background: transparent
+        }
+
+        .about-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center
+        }
+
+        .about-visual {
+            position: relative
+        }
+
+        .about-map-mock {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            overflow: hidden;
+            aspect-ratio: 1.2;
+            backdrop-filter: blur(12px);
+            position: relative;
+            z-index: 5;
+        }
+
+        .leaflet-container {
+            background: #0B0E14 !important;
+        }
+
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+
+        .leaflet-bar {
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(11, 14, 20, 0.6) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .leaflet-bar a {
+            background: transparent !important;
+            color: white !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .map-grid-vis {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .map-pin {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            z-index: 15;
+        }
+
+        .map-pin-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            box-shadow: 0 0 16px currentColor;
+            animation: pingMap 2.5s ease-in-out infinite;
+        }
+
+        .map-pin-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            opacity: 0;
+            animation: ringPulse 2.5s ease-out infinite;
+        }
+
+        @keyframes pingMap {
+
+            0%,
+            100% {
+                transform: scale(1)
+            }
+
+            50% {
+                transform: scale(1.15)
+            }
+        }
+
+        @keyframes ringPulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: .7
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(2.5);
+                opacity: 0
+            }
+        }
+
+        .about-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 28px
+        }
+
+        .about-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 22px 24px;
+            backdrop-filter: blur(12px);
+            transition: all .35s var(--ease);
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .about-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateX(4px)
+        }
+
+        .about-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .about-card h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 5px
+        }
+
+        .about-card p {
+            font-size: .875rem;
+            color: var(--muted);
+            font-weight: 300;
+            line-height: 1.6
+        }
+
+        /* FEATURES */
+        #features {
+            background: transparent
+        }
+
+        .features-inner {
+            max-width: 1200px;
+            margin: 0 auto
+        }
+
+        .features-header {
+            text-align: center;
+            margin-bottom: 70px
+        }
+
+        .features-header .section-label {
+            justify-content: center
+        }
+
+        .features-header .section-label::before {
+            display: none
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px
+        }
+
+        .feat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 36px;
+            position: relative;
+            overflow: hidden;
+            transition: all .4s var(--ease);
+            cursor: none;
+            backdrop-filter: blur(12px) saturate(180%);
+        }
+
+        .feat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), transparent 60%);
+            opacity: 0;
+            transition: opacity .4s var(--ease);
+        }
+
+        .feat-card:hover::before {
+            opacity: 1
+        }
+
+        .feat-card:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+            transform: translateY(-5px);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 40px rgba(99, 102, 241, 0.1);
+        }
+
+        .feat-card.big {
+            grid-column: span 2
+        }
+
+        .feat-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 24px
+        }
+
+        .feat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all .3s var(--ease);
+        }
+
+        .feat-card:hover .feat-icon {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3)
+        }
+
+        .feat-num {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feat-card h3 {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -.02em
+        }
+
+        .feat-card p {
+            color: var(--muted);
+            font-size: .9rem;
+            font-weight: 300;
+            line-height: 1.7;
+            margin-bottom: 20px
+        }
+
+        .feat-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+
+        .feat-tag {
+            font-size: .72rem;
+            padding: 4px 12px;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 400;
+        }
+
+        .feat-preview {
+            margin-top: 24px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 20px;
+        }
+
+        .kanban-cols {
+            display: flex;
+            gap: 10px
+        }
+
+        .kanban-col {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 10px
+        }
+
+        .kanban-col-title {
+            font-size: .68rem;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            opacity: .5
+        }
+
+        .kanban-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            font-size: .75rem;
+            color: rgba(255, 255, 255, .7);
+            transition: all .3s var(--ease);
+        }
+
+        .kanban-item:hover {
+            transform: translateX(2px);
+            background: rgba(255, 255, 255, 0.08)
+        }
+
+        .kanban-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px
+        }
+
+        /* STATS */
+        #stats {
+            background: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 70%);
+        }
+
+        .stats-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2
+        }
+
+        .stats-header {
+            text-align: center;
+            margin-bottom: 70px
+        }
+
+        .stats-header .section-label {
+            justify-content: center
+        }
+
+        .stats-header .section-label::before {
+            display: none
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 38px 32px;
+            text-align: center;
+            backdrop-filter: blur(12px) saturate(180%);
+            position: relative;
+            overflow: hidden;
+            transition: all .4s var(--ease);
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--c, #6366F1), transparent);
+            opacity: .6;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4)
+        }
+
+        .stat-number {
+            font-family: var(--font-display);
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.7));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 6px;
+            letter-spacing: -.04em;
+            line-height: 1;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: .875rem;
+            font-weight: 300;
+            letter-spacing: .04em;
+            margin-bottom: 14px
+        }
+
+        .stat-bar {
+            height: 3px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+            margin-top: 16px
+        }
+
+        .stat-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1.5s var(--ease);
+            width: 0
+        }
+
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 255, 133, 0.12);
+            border: 1px solid rgba(0, 255, 133, 0.25);
+            border-radius: 100px;
+            padding: 3px 10px;
+            font-size: .72rem;
+            color: #00FF85;
+            font-weight: 500;
+        }
+
+        .stats-live-bar {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 16px;
+            padding: 20px 28px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00FF85;
+            animation: pulse 2s infinite;
+            flex-shrink: 0
+        }
+
+        .live-text {
+            font-size: .8rem;
+            color: rgba(255, 255, 255, .35);
+            margin-right: auto;
+            white-space: nowrap
+        }
+
+        .live-stream {
+            display: flex;
+            gap: 12px;
+            overflow: hidden;
+            flex: 1;
+            mask-image: linear-gradient(90deg, transparent, black 20%, black 80%, transparent)
+        }
+
+        .live-item {
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-size: .75rem;
+            white-space: nowrap;
+            animation: scrollLeft 20s linear infinite;
+        }
+
+        @keyframes scrollLeft {
+            0% {
+                transform: translateX(600px)
+            }
+
+            100% {
+                transform: translateX(-100%)
+            }
+        }
+
+        /* CTA */
+        #cta {
+            padding: 140px 52px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 80% at 50% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 40% at 20% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 30% 50% at 80% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%);
+            animation: bgShift 8s ease-in-out infinite;
+        }
+
+        @keyframes bgShift {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .6
+            }
+        }
+
+        .cta-waves {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0
+        }
+
+        .cta-wave {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(99, 102, 241, 0.08);
+            animation: waveExpand 6s ease-out infinite;
+        }
+
+        .cta-wave:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: 50%;
+            left: 50%;
+            margin: -150px 0 0 -150px;
+            animation-delay: 0s
+        }
+
+        .cta-wave:nth-child(2) {
+            width: 500px;
+            height: 500px;
+            top: 50%;
+            left: 50%;
+            margin: -250px 0 0 -250px;
+            animation-delay: 1.5s
+        }
+
+        .cta-wave:nth-child(3) {
+            width: 700px;
+            height: 700px;
+            top: 50%;
+            left: 50%;
+            margin: -350px 0 0 -350px;
+            animation-delay: 3s
+        }
+
+        .cta-wave:nth-child(4) {
+            width: 900px;
+            height: 900px;
+            top: 50%;
+            left: 50%;
+            margin: -450px 0 0 -450px;
+            animation-delay: 4.5s
+        }
+
+        @keyframes waveExpand {
+            0% {
+                transform: scale(0.5);
+                opacity: .5
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0
+            }
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 2;
+            max-width: 680px;
+            margin: 0 auto
+        }
+
+        .cta-title {
+            font-family: var(--font-display);
+            font-size: clamp(2.5rem, 5vw, 4.5rem);
+            font-weight: 800;
+            letter-spacing: -.04em;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        .cta-sub {
+            color: var(--muted);
+            font-size: 1.1rem;
+            font-weight: 300;
+            margin-bottom: 40px;
+            line-height: 1.7
+        }
+
+        .btn-hero {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            border: none;
+            border-radius: 18px;
+            padding: 20px 44px;
+            color: #fff;
+            font-family: var(--font-body);
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: none;
+            transition: all .4s var(--ease);
+            box-shadow: 0 0 60px rgba(99, 102, 241, 0.4), 0 16px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .btn-hero:hover::before {
+            opacity: 1
+        }
+
+        .btn-hero:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 0 100px rgba(99, 102, 241, 0.6), 0 24px 80px rgba(0, 0, 0, 0.6);
+        }
+
+        .cta-note {
+            font-size: .8rem;
+            color: rgba(255, 255, 255, .2);
+            margin-top: 20px
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 36px 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .footer-logo {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1rem;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .footer-note {
+            font-size: .78rem;
+            color: rgba(255, 255, 255, .2)
+        }
+
+        /* RESPONSIVE */
+        @media(max-width:900px) {
+            nav {
+                padding: 16px 24px
+            }
+
+            .nav-links {
+                display: none
+            }
+
+            section {
+                padding: 80px 24px
+            }
+
+            .about-inner {
+                grid-template-columns: 1fr;
+                gap: 40px
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr
+            }
+
+            .feat-card.big {
+                grid-column: span 1
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr
+            }
+
+            footer {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ────── INTRO OVERLAY ────── -->
+    <div id="intro-overlay">
+        <div id="intro-map"></div>
+        <div class="intro-vignette"></div>
+        <div class="intro-scan-line"></div>
+
+        <!-- Corners -->
+        <div class="intro-corner tl"></div>
+        <div class="intro-corner tr"></div>
+        <div class="intro-corner bl"></div>
+        <div class="intro-corner br"></div>
+
+        <!-- Coords display -->
+        <div class="intro-coords" id="introCoords">28.6139° N, 77.2090° E</div>
+
+        <!-- Expanding rings -->
+        <div class="intro-ring"></div>
+        <div class="intro-ring"></div>
+        <div class="intro-ring"></div>
+
+        <!-- Crosshair -->
+        <div class="intro-crosshair">
+            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="60" cy="60" r="55" stroke="rgba(99,102,241,0.25)" stroke-width="1" />
+                <circle cx="60" cy="60" r="40" stroke="rgba(99,102,241,0.15)" stroke-width="1" stroke-dasharray="4 6" />
+                <line x1="60" y1="0" x2="60" y2="22" stroke="rgba(99,102,241,0.5)" stroke-width="1" />
+                <line x1="60" y1="98" x2="60" y2="120" stroke="rgba(99,102,241,0.5)" stroke-width="1" />
+                <line x1="0" y1="60" x2="22" y2="60" stroke="rgba(99,102,241,0.5)" stroke-width="1" />
+                <line x1="98" y1="60" x2="120" y2="60" stroke="rgba(99,102,241,0.5)" stroke-width="1" />
+                <circle cx="60" cy="60" r="3" fill="rgba(99,102,241,0.8)" />
+            </svg>
+            <div class="intro-crosshair-inner"></div>
+        </div>
+
+        <!-- Logo + status -->
+        <div class="intro-logo">
+            <div class="intro-logo-text">Project CivicLens</div>
+            <div class="intro-status">
+                <div class="intro-status-dot"></div>
+                <span id="introStatusText">Initialising civic intelligence…</span>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="intro-progress">
+            <div class="intro-progress-fill" id="introProgress"></div>
+        </div>
+    </div>
+    <!-- ────── END INTRO ────── -->
+
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <!-- NAV -->
+    <nav>
+        <div class="nav-logo">CivicLens</div>
+        <ul class="nav-links">
+            <li><a href="#about">Vision</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#stats">Stats</a></li>
+        </ul>
+        <button class="nav-cta" onclick="window.scrollTo({top:0})">Enter Dashboard →</button>
+    </nav>
+
+    <!-- HERO -->
+    <section id="hero">
+        <canvas id="canvas-bg"></canvas>
+        <div class="hero-grid"></div>
+        <div class="hero-glow-a"></div>
+        <div class="hero-glow-b"></div>
+        <div class="hero-content" id="heroContent">
+            <div class="hero-badge"><span class="badge-dot"></span>Civic Intelligence Platform · v2.0</div>
+            <h1 class="hero-title">
+                <span>Project</span>
+                <span class="grad">CivicLens</span>
+            </h1>
+            <p class="hero-sub">Track and resolve civic issues visually. Empower communities with real-time data,
+                intelligent routing, and transparent governance.</p>
+            <div class="hero-actions">
+                <a href="dashboard.html" class="btn-primary">
+                    Enter Dashboard <span class="btn-arrow">→</span>
+                </a>
+            </div>
+            <div class="hero-cats">
+                <div class="cat-chip"><span class="cat-dot" style="background:#00D2FF"></span>Infrastructure</div>
+                <div class="cat-chip"><span class="cat-dot" style="background:#FF3131"></span>Safety</div>
+                <div class="cat-chip"><span class="cat-dot" style="background:#BFFF00"></span>Sanitation</div>
+                <div class="cat-chip"><span class="cat-dot" style="background:#00FF85"></span>Greenery</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about">
+        <div class="about-inner">
+            <div>
+                <div class="section-label reveal">Our Vision</div>
+                <h2 class="section-title reveal reveal-delay-1">Cities that <span class="grad">listen,</span><br>systems
+                    that act</h2>
+                <p class="section-sub reveal reveal-delay-2">Project CivicLens bridges the gap between citizens and
+                    civic administration — turning scattered reports into an intelligent, visual resolution pipeline
+                    that
+                    every stakeholder can trust.</p>
+                <div class="about-cards">
+                    <div class="about-card reveal reveal-delay-2">
+                        <div class="about-card-icon">🗺️</div>
+                        <div>
+                            <h4>Visual Issue Mapping</h4>
+                            <p>Every reported issue is geo-pinned on a live map, categorised by type, and made visible
+                                to both citizens and officials in real time.</p>
+                        </div>
+                    </div>
+                    <div class="about-card reveal reveal-delay-3">
+                        <div class="about-card-icon">⚡</div>
+                        <div>
+                            <h4>Intelligent Routing</h4>
+                            <p>Issues are automatically assigned to the correct department using smart rules, zone
+                                mapping, and priority scoring.</p>
+                        </div>
+                    </div>
+                    <div class="about-card reveal reveal-delay-4">
+                        <div class="about-card-icon">🔍</div>
+                        <div>
+                            <h4>Full Transparency</h4>
+                            <p>Citizens can track the status of every issue from report to resolution, rebuilding trust
+                                in local governance.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="about-visual reveal reveal-delay-2">
+                <div class="about-map-mock" id="mapMock">
+                    <div class="map-grid-vis"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="features-inner">
+            <div class="features-header">
+                <div class="section-label reveal">Platform Features</div>
+                <h2 class="section-title reveal reveal-delay-1">Everything your city needs,<br><span class="grad">in one
+                        place</span></h2>
+            </div>
+            <div class="features-grid">
+                <div class="feat-card reveal">
+                    <div class="feat-card-top">
+                        <div class="feat-icon">🗺️</div>
+                        <div class="feat-num">01</div>
+                    </div>
+                    <h3>Interactive Map System</h3>
+                    <p>Zoom, pan, and filter a live city-wide map. Drop pins to report issues, cluster overlapping
+                        reports, and visualise density heat-maps by category.</p>
+                    <div class="feat-tags">
+                        <span class="feat-tag">Pan & Zoom</span>
+                        <span class="feat-tag">Pin Clusters</span>
+                        <span class="feat-tag">Heat Maps</span>
+                        <span class="feat-tag">Live Updates</span>
+                    </div>
+                </div>
+                <div class="feat-card reveal reveal-delay-1">
+                    <div class="feat-card-top">
+                        <div class="feat-icon">📋</div>
+                        <div class="feat-num">02</div>
+                    </div>
+                    <h3>Kanban Workflow</h3>
+                    <p>Issues flow through a transparent pipeline — from New to In Progress to Resolved. Teams
+                        collaborate in a shared board with priority lanes and SLA tracking.</p>
+                    <div class="feat-preview">
+                        <div class="kanban-cols">
+                            <div class="kanban-col">
+                                <div class="kanban-col-title">New</div>
+                                <div class="kanban-item"><span class="kanban-dot" style="background:#00D2FF"></span>Road
+                                    crack — Sector 4</div>
+                                <div class="kanban-item"><span class="kanban-dot"
+                                        style="background:#BFFF00"></span>Overflowing drain</div>
+                            </div>
+                            <div class="kanban-col">
+                                <div class="kanban-col-title">In Progress</div>
+                                <div class="kanban-item"><span class="kanban-dot"
+                                        style="background:#FF3131"></span>Street light out</div>
+                            </div>
+                            <div class="kanban-col">
+                                <div class="kanban-col-title">Resolved</div>
+                                <div class="kanban-item" style="opacity:.5"><span class="kanban-dot"
+                                        style="background:#00FF85"></span>Park cleanup ✓</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feat-card reveal reveal-delay-2">
+                    <div class="feat-card-top">
+                        <div class="feat-icon">👍</div>
+                        <div class="feat-num">03</div>
+                    </div>
+                    <h3>Community Upvote System</h3>
+                    <p>Citizens upvote issues they've personally experienced. Higher vote counts bubble issues up the
+                        priority queue, ensuring the most-felt problems get fixed first.</p>
+                    <div class="feat-tags">
+                        <span class="feat-tag">Priority Boost</span>
+                        <span class="feat-tag">Community Driven</span>
+                        <span class="feat-tag">Anti-Spam</span>
+                    </div>
+                </div>
+                <div class="feat-card reveal reveal-delay-3">
+                    <div class="feat-card-top">
+                        <div class="feat-icon">📊</div>
+                        <div class="feat-num">04</div>
+                    </div>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Councillors and engineers get real-time KPIs — resolution times, zone performance, category
+                        breakdowns — to make data-driven investment decisions.</p>
+                    <div class="feat-tags">
+                        <span class="feat-tag">Resolution Time</span>
+                        <span class="feat-tag">Zone Reports</span>
+                        <span class="feat-tag">Trend Lines</span>
+                        <span class="feat-tag">Export CSV</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- STATS -->
+    <section id="stats">
+        <div class="stats-bg"></div>
+        <div class="stats-inner">
+            <div class="stats-header">
+                <div class="section-label reveal">Live Platform Data</div>
+                <h2 class="section-title reveal reveal-delay-1">Real numbers, <span class="grad">real impact</span></h2>
+                <p class="section-sub reveal reveal-delay-2" style="margin:0 auto;text-align:center">Updated every 60
+                    seconds from 24 municipalities currently running Project CivicLens.</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card reveal" style="--c:#00D2FF">
+                    <div class="stat-number" data-target="1847" data-suffix="">0</div>
+                    <div class="stat-label">Issues reported today</div>
+                    <div class="stat-badge">↑ 12% vs yesterday</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill"
+                            style="background:linear-gradient(90deg,#00D2FF,rgba(0,210,255,0.3));width:0%"
+                            data-width="74%"></div>
+                    </div>
+                </div>
+                <div class="stat-card reveal reveal-delay-1" style="--c:#00FF85">
+                    <div class="stat-number" data-target="1423" data-suffix="">0</div>
+                    <div class="stat-label">Issues resolved</div>
+                    <div class="stat-badge">↑ 77% resolution rate</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill"
+                            style="background:linear-gradient(90deg,#00FF85,rgba(0,255,133,0.3));width:0%"
+                            data-width="77%"></div>
+                    </div>
+                </div>
+                <div class="stat-card reveal reveal-delay-2" style="--c:#A855F7">
+                    <div class="stat-number" data-target="24" data-suffix="">0</div>
+                    <div class="stat-label">Active zones</div>
+                    <div class="stat-badge">All zones online</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill"
+                            style="background:linear-gradient(90deg,#A855F7,rgba(168,85,247,0.3));width:0%"
+                            data-width="100%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-live-bar reveal">
+                <div class="live-dot"></div>
+                <span class="live-text">Live feed</span>
+                <div class="live-stream" id="liveStream"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section id="cta">
+        <div class="cta-bg"></div>
+        <div class="cta-waves">
+            <div class="cta-wave"></div>
+            <div class="cta-wave"></div>
+            <div class="cta-wave"></div>
+            <div class="cta-wave"></div>
+        </div>
+        <div class="cta-content">
+            <div class="section-label reveal" style="justify-content:center;margin-bottom:20px"><span></span>Ready to
+                transform your city?</div>
+            <h2 class="cta-title reveal reveal-delay-1">Your city.<br><span class="grad">Fully resolved.</span></h2>
+            <p class="cta-sub reveal reveal-delay-2">Join 24 municipalities using Project CivicLens to build more
+                responsive, transparent, and trusted civic systems.</p>
+            <button class="btn-hero reveal reveal-delay-3">Enter Dashboard <span class="btn-arrow">→</span></button>
+            <p class="cta-note reveal reveal-delay-4">Free for municipalities · No credit card required · Live in 48
+                hours</p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-logo">Project CivicLens</div>
+        <div class="footer-note">© 2025 Project CivicLens · Civic Intelligence Platform</div>
+    </footer>
+
+    <!-- LEAFLET MAP JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ─────────────────────────────────────────────
+        // INTRO ANIMATION — World map zoom into Delhi
+        // ─────────────────────────────────────────────
+        (function () {
+            const overlay = document.getElementById('intro-overlay');
+            const progressFill = document.getElementById('introProgress');
+            const statusText = document.getElementById('introStatusText');
+            const coordsEl = document.getElementById('introCoords');
+
+            // Prevent page scroll during intro
+            document.body.style.overflow = 'hidden';
+
+            // Init Leaflet world map for intro
+            const introMap = L.map('intro-map', {
+                center: [20, 0],         // Start: world view
+                zoom: 2,
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                touchZoom: false,
+                keyboard: false,
+                zoomAnimation: true,
+                fadeAnimation: true,
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19
+            }).addTo(introMap);
+
+            // Animated status messages + progress
+            const steps = [
+                { msg: 'Connecting to satellite…', coord: '20.0000° N, 0.0000° E', pct: 10 },
+                { msg: 'Scanning civic grid…', coord: '28.6300° N, 76.8500° E', pct: 28 },
+                { msg: 'Locating zone clusters…', coord: '28.6200° N, 77.1000° E', pct: 46 },
+                { msg: 'Routing civic intelligence…', coord: '28.6150° N, 77.1800° E', pct: 64 },
+                { msg: 'Pinpointing ground truth…', coord: '28.6139° N, 77.2090° E', pct: 82 },
+                { msg: 'System ready. Welcome.', coord: '28.6139° N, 77.2090° E', pct: 100 },
+            ];
+
+            // Zoom sequence: world → india → delhi
+            const zoomSteps = [
+                { center: [20, 78], zoom: 4, delay: 400 },
+                { center: [26, 78], zoom: 6, delay: 1000 },
+                { center: [28.6, 77.2], zoom: 9, delay: 1800 },
+                { center: [28.6139, 77.2090], zoom: 12, delay: 2600 },
+                { center: [28.6139, 77.2090], zoom: 14, delay: 3400 },
+            ];
+
+            // Progress animation
+            let stepIndex = 0;
+            const totalDuration = 4800; // ms
+            const startTime = Date.now();
+
+            function updateProgress() {
+                const elapsed = Date.now() - startTime;
+                const pct = Math.min(elapsed / totalDuration * 100, 100);
+                progressFill.style.width = pct + '%';
+
+                // Update step messages
+                const nextStep = steps[stepIndex];
+                if (nextStep && pct >= nextStep.pct) {
+                    statusText.textContent = nextStep.msg;
+                    coordsEl.textContent = nextStep.coord;
+                    stepIndex++;
+                }
+
+                if (pct < 100) {
+                    requestAnimationFrame(updateProgress);
+                }
+            }
+            requestAnimationFrame(updateProgress);
+
+            // Execute zoom steps
+            zoomSteps.forEach(({ center, zoom, delay }) => {
+                setTimeout(() => {
+                    introMap.flyTo(center, zoom, {
+                        duration: 0.9,
+                        easeLinearity: 0.5,
+                    });
+                }, delay);
+            });
+
+            // Add pins when close enough
+            const pins = [
+                { lat: 28.625, lng: 77.21, c: '#00D2FF' },
+                { lat: 28.64, lng: 77.23, c: '#FF3131' },
+                { lat: 28.58, lng: 77.20, c: '#BFFF00' },
+                { lat: 28.61, lng: 77.25, c: '#00FF85' },
+                { lat: 28.63, lng: 77.18, c: '#00D2FF' },
+                { lat: 28.55, lng: 77.21, c: '#FF3131' },
+                { lat: 28.60, lng: 77.15, c: '#00FF85' },
+                { lat: 28.57, lng: 77.24, c: '#BFFF00' },
+            ];
+
+            setTimeout(() => {
+                pins.forEach((p, i) => {
+                    setTimeout(() => {
+                        const icon = L.divIcon({
+                            className: '',
+                            html: `<div style="
+                            width:10px;height:10px;border-radius:50%;
+                            background:${p.c};
+                            box-shadow:0 0 12px ${p.c}, 0 0 24px ${p.c}55;
+                            animation:pingMap 2s ease-in-out infinite;
+                        "></div>`,
+                            iconSize: [10, 10],
+                            iconAnchor: [5, 5],
+                        });
+                        L.marker([p.lat, p.lng], { icon }).addTo(introMap);
+                    }, i * 120);
+                });
+            }, 3500);
+
+            // Dismiss overlay after animation completes
+            setTimeout(() => {
+                overlay.classList.add('fade-out');
+                document.body.style.overflow = '';
+
+                // Destroy intro map after fade
+                setTimeout(() => {
+                    introMap.remove();
+                    overlay.style.display = 'none';
+                }, 900);
+            }, 5000);
+
+        })();
+
+        // ─────────────────────────────────────────────
+        // CURSOR
+        // ─────────────────────────────────────────────
+        const cur = document.getElementById('cursor');
+        const curRing = document.getElementById('cursor-ring');
+        let mx = 0, my = 0, rx = 0, ry = 0;
+        document.addEventListener('mousemove', e => {
+            mx = e.clientX; my = e.clientY;
+            cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+        });
+        function animRing() {
+            rx += (mx - rx) * .12; ry += (my - ry) * .12;
+            curRing.style.left = rx + 'px'; curRing.style.top = ry + 'px';
+            requestAnimationFrame(animRing);
+        }
+        animRing();
+        document.querySelectorAll('button,a,.feat-card,.about-card,.stat-card').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cur.style.width = '20px'; cur.style.height = '20px';
+                curRing.style.width = '54px'; curRing.style.height = '54px';
+                curRing.style.borderColor = 'rgba(99,102,241,0.7)';
+            });
+            el.addEventListener('mouseleave', () => {
+                cur.style.width = '10px'; cur.style.height = '10px';
+                curRing.style.width = '36px'; curRing.style.height = '36px';
+                curRing.style.borderColor = 'rgba(99,102,241,0.5)';
+            });
+        });
+
+        // ─────────────────────────────────────────────
+        // PARTICLES CANVAS
+        // ─────────────────────────────────────────────
+        (function () {
+            const canvas = document.getElementById('canvas-bg');
+            const ctx = canvas.getContext('2d');
+            let W, H, particles = [];
+            function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight }
+            resize(); window.addEventListener('resize', resize);
+            const colors = ['rgba(99,102,241,', 'rgba(168,85,247,', 'rgba(0,210,255,', 'rgba(0,255,133,'];
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: Math.random() * 2000, y: Math.random() * 800,
+                    vx: (Math.random() - .5) * .3, vy: (Math.random() - .5) * .3,
+                    r: Math.random() * 2 + .5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: Math.random() * .5 + .1,
+                    pulse: Math.random() * Math.PI * 2,
+                });
+            }
+            let mouseX = W / 2, mouseY = H / 2;
+            document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY });
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy; p.pulse += .02;
+                    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+                    if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+                    const a = p.alpha * (0.7 + 0.3 * Math.sin(p.pulse));
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color + a + ')';
+                    ctx.fill();
+                });
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y;
+                        const d = Math.sqrt(dx * dx + dy * dy);
+                        if (d < 120) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = `rgba(99,102,241,${(1 - d / 120) * 0.08})`;
+                            ctx.lineWidth = .5; ctx.stroke();
+                        }
+                    }
+                }
+                const grd = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 300);
+                grd.addColorStop(0, 'rgba(99,102,241,0.04)');
+                grd.addColorStop(1, 'transparent');
+                ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+                requestAnimationFrame(draw);
+            }
+            draw();
+        })();
+
+        // ─────────────────────────────────────────────
+        // HERO PARALLAX
+        // ─────────────────────────────────────────────
+        const heroContent = document.getElementById('heroContent');
+        document.addEventListener('mousemove', e => {
+            const dx = (e.clientX - window.innerWidth / 2) / window.innerWidth;
+            const dy = (e.clientY - window.innerHeight / 2) / window.innerHeight;
+            heroContent.style.transform = `translate(${dx * 18}px,${dy * 12}px)`;
+        });
+
+        // ─────────────────────────────────────────────
+        // REVEAL ON SCROLL
+        // ─────────────────────────────────────────────
+        const revealEls = document.querySelectorAll('.reveal');
+        const io = new IntersectionObserver(entries => {
+            entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('visible') } });
+        }, { threshold: .12 });
+        revealEls.forEach(el => io.observe(el));
+
+        // ─────────────────────────────────────────────
+        // STAT COUNTUP
+        // ─────────────────────────────────────────────
+        const statEls = document.querySelectorAll('[data-target]');
+        const barEls = document.querySelectorAll('.stat-fill[data-width]');
+        const statsIo = new IntersectionObserver(entries => {
+            entries.forEach(en => {
+                if (!en.isIntersecting) return;
+                const el = en.target;
+                const target = +el.dataset.target;
+                let start = 0; const dur = 2000; const startTime = performance.now();
+                function tick(now) {
+                    const t = Math.min((now - startTime) / dur, 1);
+                    const ease = 1 - Math.pow(1 - t, 4);
+                    el.textContent = Math.floor(ease * target).toLocaleString();
+                    if (t < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+                statsIo.unobserve(el);
+            });
+        }, { threshold: .3 });
+        statEls.forEach(el => statsIo.observe(el));
+
+        const barIo = new IntersectionObserver(entries => {
+            entries.forEach(en => {
+                if (!en.isIntersecting) return;
+                setTimeout(() => en.target.style.width = en.target.dataset.width, 300);
+                barIo.unobserve(en.target);
+            });
+        }, { threshold: .3 });
+        barEls.forEach(el => barIo.observe(el));
+
+        // ─────────────────────────────────────────────
+        // LIVE FEED
+        // ─────────────────────────────────────────────
+        const liveItems = [
+            { t: 'Infrastructure', c: '#00D2FF', msg: 'Pothole reported — MG Road, Zone 3' },
+            { t: 'Safety', c: '#FF3131', msg: 'Street light outage — NH-48 junction' },
+            { t: 'Greenery', c: '#00FF85', msg: 'Tree fallen — Central Park East' },
+            { t: 'Sanitation', c: '#BFFF00', msg: 'Drain blocked — Sector 12B' },
+            { t: 'Infrastructure', c: '#00D2FF', msg: 'Water leakage — Residency Rd' },
+            { t: 'Safety', c: '#FF3131', msg: 'Missing manhole cover — Ring Rd' },
+            { t: 'Greenery', c: '#00FF85', msg: 'Park bench broken — Cubbon Park' },
+            { t: 'Sanitation', c: '#BFFF00', msg: 'Garbage overflow — Market St' },
+        ];
+        const stream = document.getElementById('liveStream');
+        liveItems.forEach((item, i) => {
+            const el = document.createElement('div');
+            el.className = 'live-item';
+            el.style.animationDelay = (i * 2.5) + 's';
+            el.innerHTML = `<span style="color:${item.c};margin-right:6px">●</span>${item.msg}`;
+            stream.appendChild(el);
+        });
+
+        // ─────────────────────────────────────────────
+        // ABOUT MAP — NEW DELHI
+        // ─────────────────────────────────────────────
+        const map = L.map('mapMock', {
+            center: [28.6139, 77.2090],
+            zoom: 12,
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        const pins = [
+            { lat: 28.625, lng: 77.21, c: '#00D2FF' },
+            { lat: 28.64, lng: 77.23, c: '#FF3131' },
+            { lat: 28.58, lng: 77.20, c: '#BFFF00' },
+            { lat: 28.61, lng: 77.25, c: '#00FF85' },
+            { lat: 28.63, lng: 77.18, c: '#00D2FF' },
+            { lat: 28.55, lng: 77.21, c: '#FF3131' },
+            { lat: 28.60, lng: 77.15, c: '#00FF85' },
+            { lat: 28.57, lng: 77.24, c: '#BFFF00' },
+        ];
+
+        pins.forEach((p, i) => {
+            const customIcon = L.divIcon({
+                className: 'map-pin-container',
+                html: `
+        <div class="map-pin" style="color:${p.c}; position:relative;">
+            <div class="map-pin-dot" style="background:${p.c};width:12px;height:12px;border-radius:50%"></div>
+            <div class="map-pin-ring" style="border-color:${p.c}; animation-delay:${i * 0.4}s"></div>
+        </div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
+        });
+
+        map.scrollWheelZoom.disable();
+        map.on('focus', () => map.scrollWheelZoom.enable());
+        map.on('blur', () => map.scrollWheelZoom.disable());
+    </script>
+</body>
+
+</html>

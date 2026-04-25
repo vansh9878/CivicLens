@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicLens | Login</title>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* === CSS Variables === */
+        :root {
+            --bg-dark: #05070A;
+            --primary-glow: rgba(0, 210, 255, 0.15);
+            --primary-color: #00D2FF;
+            --primary-color-dark: #0077FF;
+            --text-main: #FFFFFF;
+            --text-muted: #8A939E;
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --error-color: #FF4A4A;
+            --success-color: #00FF88;
+        }
+
+        /* === Reset & Base === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            cursor: none;
+            /* Custom cursor */
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* === Background Elements & Animations === */
+        .grid-bg {
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            width: calc(100vw + 100px);
+            height: calc(100vh + 100px);
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 1;
+            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+            -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+            /* New: Scrolling grid animation */
+            animation: panGrid 20s linear infinite;
+        }
+
+        @keyframes panGrid {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(50px, 50px);
+            }
+        }
+
+        .ambient-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            filter: blur(60px);
+            z-index: 1;
+            /* New: Breathing glow animation */
+            animation: breatheGlow 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes breatheGlow {
+            0% {
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        #particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        /* === Custom Cursor === */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary-color);
+            box-shadow: 0 0 10px var(--primary-color);
+        }
+
+        .cursor-outline {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(0, 210, 255, 0.5);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+
+        .cursor-outline.hovering {
+            width: 50px;
+            height: 50px;
+            background-color: rgba(0, 210, 255, 0.05);
+            border-color: var(--primary-color);
+        }
+
+        /* === Login Card Container === */
+        .login-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 48px 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Civic Theme Illustration */
+        .civic-illustration {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 24px;
+            display: block;
+        }
+
+        .civic-illustration circle,
+        .civic-illustration path {
+            stroke: var(--primary-color);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .civic-illustration circle {
+            fill: var(--bg-dark);
+        }
+
+        /* === Typography === */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* === Form Elements === */
+        .input-group {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .input-control {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            color: var(--text-main);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.15), inset 0 0 10px rgba(0, 210, 255, 0.05);
+        }
+
+        .floating-label {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 15px;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-control:focus~.floating-label,
+        .input-control:not(:placeholder-shown)~.floating-label {
+            top: -10px;
+            left: 12px;
+            font-size: 12px;
+            color: var(--primary-color);
+            background: var(--bg-dark);
+            padding: 0 6px;
+            border-radius: 4px;
+        }
+
+        .validation-text {
+            position: absolute;
+            bottom: -18px;
+            left: 4px;
+            font-size: 11px;
+            color: var(--error-color);
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+
+        .input-group.error .input-control {
+            border-color: var(--error-color);
+        }
+
+        .input-group.error .validation-text {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .input-group.success .input-control {
+            border-color: var(--success-color);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-main);
+        }
+
+        /* === Buttons === */
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary-color-dark), var(--primary-color));
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 20px rgba(0, 119, 255, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 15px 25px rgba(0, 210, 255, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-anim 0.6s linear;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes ripple-anim {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Secondary Actions & Footer */
+        .secondary-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 16px 0 24px;
+        }
+
+        .action-link {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .action-link:hover {
+            color: var(--text-main);
+        }
+
+        .action-link.forgot {
+            color: var(--primary-color);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .divider::before {
+            margin-right: 12px;
+        }
+
+        .divider::after {
+            margin-left: 12px;
+        }
+
+        .social-logins {
+            display: flex;
+            gap: 16px;
+        }
+
+        .social-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .social-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .footer-links {
+            margin-top: 32px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* === Staggered Animations === */
+        .stagger-1 {
+            opacity: 0;
+            animation: fadeUp 0.6s 0.1s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stagger-2 {
+            opacity: 0;
+            animation: fadeUp 0.6s 0.2s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stagger-3 {
+            opacity: 0;
+            animation: fadeUp 0.6s 0.3s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stagger-4 {
+            opacity: 0;
+            animation: fadeUp 0.6s 0.4s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stagger-5 {
+            opacity: 0;
+            animation: fadeUp 0.6s 0.5s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .glass-card {
+                padding: 32px 24px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+
+            .login-wrapper {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Environment Background -->
+    <div class="grid-bg"></div>
+    <div class="ambient-glow"></div>
+    <canvas id="particles"></canvas>
+
+    <!-- Custom Cursor elements -->
+    <div class="cursor-dot" id="cursor-dot"></div>
+    <div class="cursor-outline" id="cursor-outline"></div>
+
+    <!-- Main Container -->
+    <main class="login-wrapper">
+        <div class="glass-card">
+
+            <!-- Branding / Illustration -->
+            <div class="header stagger-1">
+                <svg class="civic-illustration" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20,50 L40,30 L70,40 L80,70 L50,80 Z" stroke-dasharray="4,4" />
+                    <path d="M40,30 L50,60 L80,70" />
+                    <circle cx="20" cy="50" r="5" />
+                    <circle cx="40" cy="30" r="6" />
+                    <circle cx="70" cy="40" r="4" />
+                    <circle cx="80" cy="70" r="5" />
+                    <circle cx="50" cy="80" r="4" />
+                    <circle cx="50" cy="60" r="7" />
+                </svg>
+                <h1 class="title">CivicLens</h1>
+                <p class="subtitle">Secure access to the civic grid</p>
+            </div>
+
+            <!-- Form -->
+            <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
+                <div class="input-group stagger-2" id="email-group">
+                    <input type="text" id="email" class="input-control interactive" placeholder=" " autocomplete="off">
+                    <label for="email" class="floating-label">Email or Username</label>
+                    <span class="validation-text">Please enter a valid format</span>
+                </div>
+
+                <div class="input-group stagger-3" id="password-group">
+                    <input type="password" id="password" class="input-control interactive" placeholder=" ">
+                    <label for="password" class="floating-label">Password</label>
+                    <i class="ph ph-eye password-toggle interactive" id="togglePassword"></i>
+                    <span class="validation-text">Password is required</span>
+                </div>
+
+                <div class="secondary-actions stagger-4">
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted);">
+                        <input type="checkbox" class="interactive" style="accent-color: var(--primary-color);">
+                        Remember me
+                    </label>
+                    <a href="#" class="action-link forgot interactive">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn-primary stagger-4 interactive" id="loginBtn">
+                    <a href="landing.html" class="btn-primary stagger-4 interactive">Authenticate</a>
+                </button>
+
+                <div class="divider stagger-5">Or continue with</div>
+
+                <div class="social-logins stagger-5">
+                    <button type="button" class="social-btn interactive">
+                        <i class="ph ph-google-logo"></i>
+                    </button>
+                </div>
+
+                <div class="footer-links stagger-5">
+                    <a href="#" class="action-link interactive">Don't have an account? <span
+                            style="color: var(--text-main);">Create Account</span></a>
+                    <a href="#" class="action-link interactive">Continue as Guest →</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // === Custom Cursor & Global Mouse Object ===
+        const cursorDot = document.getElementById("cursor-dot");
+        const cursorOutline = document.getElementById("cursor-outline");
+        const interactives = document.querySelectorAll(".interactive");
+
+        let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let outlineX = mouse.x, outlineY = mouse.y;
+
+        window.addEventListener("mousemove", (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+
+            cursorDot.style.left = `${mouse.x}px`;
+            cursorDot.style.top = `${mouse.y}px`;
+        });
+
+        function animateCursor() {
+            let distX = mouse.x - outlineX;
+            let distY = mouse.y - outlineY;
+
+            outlineX += distX * 0.15;
+            outlineY += distY * 0.15;
+
+            cursorOutline.style.left = `${outlineX}px`;
+            cursorOutline.style.top = `${outlineY}px`;
+
+            requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+
+        interactives.forEach(el => {
+            el.addEventListener("mouseenter", () => cursorOutline.classList.add("hovering"));
+            el.addEventListener("mouseleave", () => cursorOutline.classList.remove("hovering"));
+        });
+
+        // === Advanced Canvas Network Particles ===
+        const canvas = document.getElementById("particles");
+        const ctx = canvas.getContext("2d");
+        let particlesArray = [];
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 0.6 - 0.3;
+                this.speedY = Math.random() * 0.6 - 0.3;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(0, 210, 255, 0.4)`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particlesArray = [];
+            // Calculate a healthy amount of particles based on screen size
+            let numParticles = Math.min((canvas.width * canvas.height) / 12000, 100);
+            for (let i = 0; i < numParticles; i++) {
+                particlesArray.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+
+                // Connect particles to each other (Network/Grid effect)
+                for (let j = i; j < particlesArray.length; j++) {
+                    let dx = particlesArray[i].x - particlesArray[j].x;
+                    let dy = particlesArray[i].y - particlesArray[j].y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 120) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(0, 210, 255, ${(1 - distance / 120) * 0.2})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                        ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
+                        ctx.stroke();
+                    }
+                }
+
+                // Connect particles to the Mouse cursor (Magnetic effect)
+                let dxMouse = particlesArray[i].x - mouse.x;
+                let dyMouse = particlesArray[i].y - mouse.y;
+                let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+
+                if (distMouse < 150) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 210, 255, ${(1 - distMouse / 150) * 0.4})`;
+                    ctx.lineWidth = 1.2;
+                    ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.stroke();
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        // === Form & UI Logic ===
+        const togglePassword = document.getElementById("togglePassword");
+        const passwordInput = document.getElementById("password");
+
+        togglePassword.addEventListener("click", function () {
+            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+            this.classList.toggle("ph-eye");
+            this.classList.toggle("ph-eye-slash");
+        });
+
+        const btnPrimary = document.getElementById("loginBtn");
+        btnPrimary.addEventListener("click", function (e) {
+            let x = e.clientX - e.target.getBoundingClientRect().left;
+            let y = e.clientY - e.target.getBoundingClientRect().top;
+            let ripple = document.createElement("span");
+            ripple.className = "ripple";
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            this.appendChild(ripple);
+            setTimeout(() => { ripple.remove(); }, 600);
+        });
+
+        const emailInput = document.getElementById("email");
+        const emailGroup = document.getElementById("email-group");
+        const passGroup = document.getElementById("password-group");
+
+        function validateEmail(val) { return val.length > 3; }
+
+        emailInput.addEventListener("blur", () => {
+            if (emailInput.value !== "") {
+                if (!validateEmail(emailInput.value)) {
+                    emailGroup.classList.add("error");
+                    emailGroup.classList.remove("success");
+                } else {
+                    emailGroup.classList.remove("error");
+                    emailGroup.classList.add("success");
+                }
+            } else {
+                emailGroup.classList.remove("error", "success");
+            }
+        });
+
+        function handleLogin() {
+            let valid = true;
+            if (!validateEmail(emailInput.value)) { emailGroup.classList.add("error"); valid = false; }
+            if (passwordInput.value.length < 1) { passGroup.classList.add("error"); valid = false; }
+            else { passGroup.classList.remove("error"); }
+
+            if (valid) {
+                btnPrimary.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Authenticating...';
+                setTimeout(() => {
+                    document.querySelector('.login-wrapper').style.opacity = '0';
+                    document.querySelector('.login-wrapper').style.transform = 'scale(0.95)';
+                    document.querySelector('.login-wrapper').style.transition = 'all 0.5s ease';
+                    setTimeout(() => { btnPrimary.innerHTML = 'Authenticated'; }, 500);
+                }, 1500);
+            }
+        }
+    </script>
+</body>
+
+</html>

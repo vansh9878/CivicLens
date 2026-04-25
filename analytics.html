@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project CivicLens — Analytics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0B0E14;
+      --glass: rgba(255, 255, 255, 0.05);
+      --border: rgba(255, 255, 255, 0.1);
+      --accent-1: #6366F1;
+      --accent-2: #A855F7;
+      --accent-gradient: linear-gradient(135deg, #6366F1, #A855F7);
+      --c-infra: #00D2FF;
+      --c-safety: #FF3131;
+      --c-sanitation: #BFFF00;
+      --c-greenery: #00FF85;
+      --text-primary: rgba(255, 255, 255, 0.92);
+      --text-secondary: rgba(255, 255, 255, 0.45);
+      --text-muted: rgba(255, 255, 255, 0.25);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* CUSTOM CURSOR */
+    #cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 12px;
+      height: 12px;
+      background: var(--accent-gradient);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.08s var(--ease), width 0.3s var(--ease), height 0.3s var(--ease), opacity 0.3s;
+      mix-blend-mode: normal;
+    }
+
+    #cursor-ring {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: transform 0.18s var(--ease), width 0.3s var(--ease), height 0.3s var(--ease), border-color 0.3s;
+    }
+
+    body:has(.glass-card:hover) #cursor {
+      width: 20px;
+      height: 20px;
+    }
+
+    body:has(.glass-card:hover) #cursor-ring {
+      width: 56px;
+      height: 56px;
+      border-color: rgba(168, 85, 247, 0.6);
+    }
+
+    /* NOISE OVERLAY */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* AMBIENT BLOBS */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.12;
+      animation: blobFloat 18s ease-in-out infinite;
+    }
+
+    .blob-1 {
+      width: 600px;
+      height: 600px;
+      background: #6366F1;
+      top: -200px;
+      right: -100px;
+      animation-delay: 0s;
+    }
+
+    .blob-2 {
+      width: 400px;
+      height: 400px;
+      background: #A855F7;
+      bottom: 100px;
+      left: -100px;
+      animation-delay: -7s;
+    }
+
+    .blob-3 {
+      width: 300px;
+      height: 300px;
+      background: #00D2FF;
+      top: 40%;
+      left: 40%;
+      animation-delay: -12s;
+      opacity: 0.06;
+    }
+
+    @keyframes blobFloat {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      33% {
+        transform: translate(30px, -40px) scale(1.05);
+      }
+
+      66% {
+        transform: translate(-20px, 30px) scale(0.95);
+      }
+    }
+
+    /* LAYOUT */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px 0 48px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .header-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .header-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px) saturate(180%);
+      padding: 8px 16px;
+      border-radius: 100px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00FF85;
+      box-shadow: 0 0 8px #00FF85;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.6;
+        transform: scale(0.85);
+      }
+    }
+
+    .badge-time {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* KPI ROW */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .kpi-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px) saturate(180%);
+      border-radius: 20px;
+      padding: 24px;
+      transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), border-color 0.3s;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .kpi-value {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .kpi-delta {
+      font-size: 12px;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kpi-delta.up {
+      color: #00FF85;
+    }
+
+    .kpi-delta.down {
+      color: #FF3131;
+    }
+
+    .kpi-bar {
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 16px;
+      overflow: hidden;
+    }
+
+    .kpi-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 1.2s var(--ease);
+    }
+
+    /* GLASS CARD */
+    .glass-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px) saturate(180%);
+      border-radius: 24px;
+      padding: 32px;
+      transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), border-color 0.3s;
+      transform-style: preserve-3d;
+      will-change: transform;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+    }
+
+    .card-tag {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 100px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: #A5B4FC;
+    }
+
+    /* MAIN GRID */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .secondary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    /* LINE CHART */
+    #lineCanvas {
+      width: 100%;
+      display: block;
+    }
+
+    /* BAR CHART */
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .bar-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bar-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bar-label {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .bar-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .bar-track {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 1.4s var(--ease);
+    }
+
+    .bar-fill.infra {
+      background: linear-gradient(90deg, #00D2FF, rgba(0, 210, 255, 0.4));
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
+    }
+
+    .bar-fill.safety {
+      background: linear-gradient(90deg, #FF3131, rgba(255, 49, 49, 0.4));
+      box-shadow: 0 0 12px rgba(255, 49, 49, 0.4);
+    }
+
+    .bar-fill.sanitation {
+      background: linear-gradient(90deg, #BFFF00, rgba(191, 255, 0, 0.4));
+      box-shadow: 0 0 12px rgba(191, 255, 0, 0.4);
+    }
+
+    .bar-fill.greenery {
+      background: linear-gradient(90deg, #00FF85, rgba(0, 255, 133, 0.4));
+      box-shadow: 0 0 12px rgba(0, 255, 133, 0.3);
+    }
+
+    /* DOUGHNUT */
+    #doughnutCanvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    .doughnut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-name {
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .legend-pct {
+      font-weight: 600;
+    }
+
+    /* STATUS CARD */
+    .status-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .status-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .status-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .status-icon.new {
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    .status-icon.progress {
+      background: rgba(0, 210, 255, 0.12);
+    }
+
+    .status-icon.resolved {
+      background: rgba(0, 255, 133, 0.1);
+    }
+
+    .status-info {
+      flex: 1;
+    }
+
+    .status-name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status-count {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .status-pct {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .status-pct.new {
+      color: #A5B4FC;
+    }
+
+    .status-pct.progress {
+      color: #00D2FF;
+    }
+
+    .status-pct.resolved {
+      color: #00FF85;
+    }
+
+    /* INSIGHT CARD */
+    .insights-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .insight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      transition: all 0.3s var(--ease);
+    }
+
+    .insight-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateX(4px);
+    }
+
+    .insight-icon {
+      font-size: 18px;
+      line-height: 1;
+      margin-top: 1px;
+    }
+
+    .insight-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-secondary);
+    }
+
+    .insight-text strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .insight-badge {
+      margin-left: auto;
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 100px;
+    }
+
+    .insight-badge.warn {
+      background: rgba(255, 49, 49, 0.12);
+      color: #FF6B6B;
+      border: 1px solid rgba(255, 49, 49, 0.2);
+    }
+
+    .insight-badge.good {
+      background: rgba(0, 255, 133, 0.1);
+      color: #00FF85;
+      border: 1px solid rgba(0, 255, 133, 0.2);
+    }
+
+    .insight-badge.info {
+      background: rgba(99, 102, 241, 0.12);
+      color: #A5B4FC;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    /* SCROLL REVEAL */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      padding: 32px 0 0;
+      border-top: 1px solid var(--border);
+    }
+
+    footer p {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .secondary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .kpi-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .page-wrapper {
+        padding: 0 16px 60px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="page-wrapper">
+
+    <!-- HEADER -->
+    <header class="reveal">
+      <div class="header-left">
+        <span class="header-eyebrow">Project CivicLenss · Analytics</span>
+        <h1 class="header-title">City Intelligence Dashboard</h1>
+        <p class="header-subtitle">Urban issue tracking &amp; resolution insights</p>
+      </div>
+      <div class="header-right">
+        <div class="badge">
+          <div class="badge-dot"></div>
+          Live · <span class="badge-time" id="livetime"></span>
+        </div>
+        <div class="badge">
+          <span style="color:var(--text-primary);font-weight:500;">Q2 2025</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI ROW -->
+    <div class="kpi-row">
+      <div class="kpi-card reveal glass-card" style="transition-delay:0.05s">
+        <div class="kpi-label">Total Issues</div>
+        <div class="kpi-value" data-count="2847"
+          style="background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+          0</div>
+        <div class="kpi-delta up">↑ 8.4% this month</div>
+        <div class="kpi-bar">
+          <div class="kpi-bar-fill" style="background:var(--accent-gradient);width:72%"></div>
+        </div>
+      </div>
+      <div class="kpi-card reveal glass-card" style="transition-delay:0.1s">
+        <div class="kpi-label">Resolved</div>
+        <div class="kpi-value" data-count="1924" style="color:#00FF85;">0</div>
+        <div class="kpi-delta up">↑ 12% resolution rate</div>
+        <div class="kpi-bar">
+          <div class="kpi-bar-fill" style="background:linear-gradient(90deg,#00FF85,rgba(0,255,133,0.3));width:67%">
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card reveal glass-card" style="transition-delay:0.15s">
+        <div class="kpi-label">In Progress</div>
+        <div class="kpi-value" data-count="619" style="color:#00D2FF;">0</div>
+        <div class="kpi-delta down">↓ 3.1% vs last week</div>
+        <div class="kpi-bar">
+          <div class="kpi-bar-fill" style="background:linear-gradient(90deg,#00D2FF,rgba(0,210,255,0.3));width:22%">
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card reveal glass-card" style="transition-delay:0.2s">
+        <div class="kpi-label">Pending Review</div>
+        <div class="kpi-value" data-count="304" style="color:#A855F7;">0</div>
+        <div class="kpi-delta up">↑ 2 new today</div>
+        <div class="kpi-bar">
+          <div class="kpi-bar-fill" style="background:linear-gradient(90deg,#A855F7,rgba(168,85,247,0.3));width:11%">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LINE CHART -->
+    <div class="glass-card reveal full-width" style="margin-bottom:20px;transition-delay:0.25s">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Issue Trends Over Time</div>
+          <div class="card-subtitle">Monthly issue submissions — last 12 months</div>
+        </div>
+        <span class="card-tag">Trend</span>
+      </div>
+      <canvas id="lineCanvas" height="200"></canvas>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid" style="margin-bottom:20px;">
+
+      <!-- BAR CHART -->
+      <div class="glass-card reveal" style="transition-delay:0.3s">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Category Distribution</div>
+            <div class="card-subtitle">Issues by type</div>
+          </div>
+          <span class="card-tag">Categories</span>
+        </div>
+        <div class="bar-chart">
+          <div class="bar-item">
+            <div class="bar-meta">
+              <span class="bar-label" style="color:var(--c-infra)">Infrastructure</span>
+              <span class="bar-value">847 · 30%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill infra" style="width:75%"></div>
+            </div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-meta">
+              <span class="bar-label" style="color:var(--c-safety)">Safety</span>
+              <span class="bar-value">623 · 22%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill safety" style="width:55%"></div>
+            </div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-meta">
+              <span class="bar-label" style="color:var(--c-sanitation)">Sanitation</span>
+              <span class="bar-value">938 · 33%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill sanitation" style="width:93%"></div>
+            </div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-meta">
+              <span class="bar-label" style="color:var(--c-greenery)">Greenery</span>
+              <span class="bar-value">439 · 15%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill greenery" style="width:37%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOUGHNUT -->
+      <div class="glass-card reveal" style="transition-delay:0.35s">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Category Share</div>
+            <div class="card-subtitle">Visual breakdown</div>
+          </div>
+          <span class="card-tag">Share</span>
+        </div>
+        <canvas id="doughnutCanvas" width="200" height="200"></canvas>
+        <div class="doughnut-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--c-infra)"></div><span
+              class="legend-name">Infrastructure</span><span class="legend-pct" style="color:var(--c-infra)">30%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--c-safety)"></div><span
+              class="legend-name">Safety</span><span class="legend-pct" style="color:var(--c-safety)">22%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--c-sanitation)"></div><span
+              class="legend-name">Sanitation</span><span class="legend-pct" style="color:var(--c-sanitation)">33%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--c-greenery)"></div><span
+              class="legend-name">Greenery</span><span class="legend-pct" style="color:var(--c-greenery)">15%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECONDARY GRID -->
+    <div class="secondary-grid">
+
+      <!-- STATUS -->
+      <div class="glass-card reveal" style="transition-delay:0.4s">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Status Breakdown</div>
+            <div class="card-subtitle">Current pipeline</div>
+          </div>
+          <span class="card-tag">Status</span>
+        </div>
+        <div class="status-list">
+          <div class="status-item">
+            <div class="status-icon new">🆕</div>
+            <div class="status-info">
+              <div class="status-name">New</div>
+              <div class="status-count">304 issues</div>
+            </div>
+            <span class="status-pct new">10.7%</span>
+          </div>
+          <div class="status-item">
+            <div class="status-icon progress">⚙️</div>
+            <div class="status-info">
+              <div class="status-name">In Progress</div>
+              <div class="status-count">619 issues</div>
+            </div>
+            <span class="status-pct progress">21.7%</span>
+          </div>
+          <div class="status-item">
+            <div class="status-icon resolved">✅</div>
+            <div class="status-info">
+              <div class="status-name">Resolved</div>
+              <div class="status-count">1,924 issues</div>
+            </div>
+            <span class="status-pct resolved">67.6%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MINI LINE CHART — Resolutions -->
+      <div class="glass-card reveal" style="transition-delay:0.45s">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Resolution Rate</div>
+            <div class="card-subtitle">Weekly avg. closures</div>
+          </div>
+          <span class="card-tag">Velocity</span>
+        </div>
+        <canvas id="miniLine" width="100%" height="160"></canvas>
+        <div style="display:flex;justify-content:space-between;margin-top:18px;">
+          <div>
+            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.1em;">Avg
+              Weekly</div>
+            <div style="font-size:22px;font-weight:700;color:#00FF85;letter-spacing:-0.5px;">148</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.1em;">Best
+              Week</div>
+            <div style="font-size:22px;font-weight:700;color:#A5B4FC;letter-spacing:-0.5px;">213</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INSIGHTS -->
+      <div class="glass-card reveal" style="transition-delay:0.5s">
+        <div class="card-header">
+          <div>
+            <div class="card-title">AI Insights</div>
+            <div class="card-subtitle">Auto-generated signals</div>
+          </div>
+          <span class="card-tag">Smart</span>
+        </div>
+        <div class="insights-grid">
+          <div class="insight-item">
+            <span class="insight-icon">⚠️</span>
+            <span class="insight-text"><strong>Sanitation issues</strong> have risen 18% over the last 4 weeks.</span>
+            <span class="insight-badge warn">Alert</span>
+          </div>
+          <div class="insight-item">
+            <span class="insight-icon">📈</span>
+            <span class="insight-text"><strong>Resolution rate</strong> improved by 12% compared to last quarter.</span>
+            <span class="insight-badge good">+12%</span>
+          </div>
+          <div class="insight-item">
+            <span class="insight-icon">🏗️</span>
+            <span class="insight-text"><strong>Infrastructure</strong> backlog reduced — 40 cases closed this
+              week.</span>
+            <span class="insight-badge good">Good</span>
+          </div>
+          <div class="insight-item">
+            <span class="insight-icon">🔍</span>
+            <span class="insight-text"><strong>Safety reports</strong> concentrated in Zone 4 &amp; 7 this
+              period.</span>
+            <span class="insight-badge info">Focus</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="reveal" style="margin-top:48px;">
+      <p>Project Polis · City Intelligence Platform · Data refreshed every 15 minutes</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // ─── CURSOR ─────────────────────────────────────────────────────────────────
+    const cur = document.getElementById('cursor');
+    const ring = document.getElementById('cursor-ring');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    (function animCursor() {
+      rx += (mx - rx) * 0.14; ry += (my - ry) * 0.14;
+      cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+      requestAnimationFrame(animCursor);
+    })();
+
+    // ─── LIVE TIME ───────────────────────────────────────────────────────────────
+    function updateTime() {
+      const t = new Date();
+      document.getElementById('livetime').textContent =
+        t.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    updateTime(); setInterval(updateTime, 1000);
+
+    // ─── CARD TILT ────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.glass-card, .kpi-card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        const x = e.clientX - r.left, y = e.clientY - r.top;
+        const cx = r.width / 2, cy = r.height / 2;
+        const rx = ((y - cy) / cy) * 5, ry = -((x - cx) / cx) * 5;
+        card.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.015)`;
+        card.style.boxShadow = `${-ry * 2}px ${rx * 2}px 40px rgba(0,0,0,0.35)`;
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) scale(1)';
+        card.style.boxShadow = '';
+      });
+    });
+
+    // ─── SCROLL REVEAL ────────────────────────────────────────────────────────────
+    const revealObs = new IntersectionObserver(entries => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) {
+          setTimeout(() => e.target.classList.add('visible'), i * 60);
+        }
+      });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+    // ─── COUNT-UP ANIMATION ───────────────────────────────────────────────────────
+    function countUp(el) {
+      const target = parseInt(el.dataset.count);
+      let start = 0, duration = 1800;
+      const startTime = performance.now();
+      function step(now) {
+        const p = Math.min((now - startTime) / duration, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.floor(ease * target).toLocaleString();
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = target.toLocaleString();
+      }
+      requestAnimationFrame(step);
+    }
+    const countObs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { countUp(e.target); countObs.unobserve(e.target); } });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('[data-count]').forEach(el => countObs.observe(el));
+
+    // ─── BAR FILLS ────────────────────────────────────────────────────────────────
+    const barObs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.querySelectorAll('.bar-fill, .kpi-bar-fill').forEach(b => b.style.transform = 'scaleX(1)');
+          barObs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll('.glass-card, .kpi-card').forEach(c => barObs.observe(c));
+
+    // ─── LINE CHART ───────────────────────────────────────────────────────────────
+    function drawLineChart() {
+      const canvas = document.getElementById('lineCanvas');
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.parentElement.clientWidth - 64;
+      const H = 200;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+
+      const months = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
+      const data = [142, 168, 195, 210, 243, 198, 267, 289, 312, 278, 341, 368];
+      const resolved = [80, 110, 130, 158, 190, 145, 210, 240, 270, 220, 290, 320];
+
+      const pad = { t: 20, r: 20, b: 40, l: 50 };
+      const cw = W - pad.l - pad.r;
+      const ch = H - pad.t - pad.b;
+      const maxV = 400;
+
+      function toX(i) { return pad.l + (i / (data.length - 1)) * cw; }
+      function toY(v) { return pad.t + ch - (v / maxV) * ch; }
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      [0, 100, 200, 300, 400].forEach(v => {
+        const y = toY(v);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '10px Inter'; ctx.textAlign = 'right';
+        ctx.fillText(v, pad.l - 8, y + 4);
+      });
+
+      // Month labels
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '10px Inter'; ctx.textAlign = 'center';
+      months.forEach((m, i) => ctx.fillText(m, toX(i), H - 10));
+
+      // Animate draw
+      let progress = 0;
+      function draw() {
+        ctx.clearRect(0, pad.t, W, H - pad.t);
+        // re-draw grid (cleared)
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+        [0, 100, 200, 300, 400].forEach(v => {
+          const y = toY(v);
+          ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke();
+        });
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '10px Inter';
+        ctx.textAlign = 'right';
+        [0, 100, 200, 300, 400].forEach(v => ctx.fillText(v, pad.l - 8, toY(v) + 4));
+        ctx.textAlign = 'center';
+        months.forEach((m, i) => ctx.fillText(m, toX(i), H - 10));
+
+        const pts = Math.floor(progress * (data.length - 1));
+        const frac = progress * (data.length - 1) - pts;
+
+        function drawLine(arr, color1, color2, opacity) {
+          if (pts < 1) return;
+          const grad = ctx.createLinearGradient(pad.l, 0, pad.l + cw, 0);
+          grad.addColorStop(0, color1); grad.addColorStop(1, color2);
+          ctx.strokeStyle = grad; ctx.lineWidth = 2.5; ctx.globalAlpha = opacity;
+          ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+          ctx.shadowColor = color1; ctx.shadowBlur = 10;
+          ctx.beginPath(); ctx.moveTo(toX(0), toY(arr[0]));
+          for (let i = 1; i < Math.min(pts + 1, arr.length); i++) {
+            const x = i < pts ? toX(i) : toX(i - 1) + frac * (toX(i) - toX(i - 1));
+            const y = i < pts ? toY(arr[i]) : toY(arr[i - 1]) + frac * (toY(arr[i]) - toY(arr[i - 1]));
+            ctx.lineTo(x, y); if (i === pts) break;
+          }
+          ctx.stroke(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+
+          // Area fill
+          const areaGrad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ch);
+          areaGrad.addColorStop(0, color1.replace(')', ',0.18)').replace('rgb', 'rgba'));
+          areaGrad.addColorStop(1, 'transparent');
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = areaGrad;
+          ctx.beginPath(); ctx.moveTo(toX(0), toY(arr[0]));
+          for (let i = 1; i < Math.min(pts + 1, arr.length); i++) {
+            ctx.lineTo(toX(i < pts ? i : pts), toY(arr[i < pts ? i : pts]));
+            if (i === pts) break;
+          }
+          const lastX = pts < arr.length - 1 ? toX(pts) : toX(arr.length - 1);
+          ctx.lineTo(lastX, pad.t + ch); ctx.lineTo(toX(0), pad.t + ch); ctx.closePath();
+          ctx.fill(); ctx.globalAlpha = 1;
+        }
+
+        drawLine(data, '#6366F1', '#A855F7', 0.9);
+        drawLine(resolved, '#00FF85', '#00D2FF', 0.7);
+
+        // Dots
+        if (pts > 0) {
+          [[data, '#6366F1'], [resolved, '#00FF85']].forEach(([arr, c]) => {
+            for (let i = 0; i <= pts && i < arr.length; i++) {
+              ctx.beginPath(); ctx.arc(toX(i), toY(arr[i]), 3.5, 0, Math.PI * 2);
+              ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = 8;
+              ctx.fill(); ctx.shadowBlur = 0;
+            }
+          });
+        }
+
+        if (progress < 1) { progress += 0.018; requestAnimationFrame(draw); }
+      }
+
+      const lo = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting) { draw(); lo.disconnect(); }
+      }, { threshold: 0.3 });
+      lo.observe(canvas);
+    }
+    drawLineChart();
+    window.addEventListener('resize', () => { setTimeout(drawLineChart, 100); });
+
+    // ─── DOUGHNUT CHART ───────────────────────────────────────────────────────────
+    function drawDoughnut() {
+      const canvas = document.getElementById('doughnutCanvas');
+      const dpr = window.devicePixelRatio || 1;
+      const size = Math.min(canvas.parentElement.clientWidth - 64, 200);
+      canvas.width = size * dpr; canvas.height = size * dpr;
+      canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+
+      const slices = [
+        { pct: 0.30, color: '#00D2FF', label: 'Infra' },
+        { pct: 0.22, color: '#FF3131', label: 'Safety' },
+        { pct: 0.33, color: '#BFFF00', label: 'Sanitation' },
+        { pct: 0.15, color: '#00FF85', label: 'Greenery' }
+      ];
+      const cx = size / 2, cy = size / 2, r = size / 2 - 12, inner = r * 0.58;
+      let progress = 0, startAngle = -Math.PI / 2;
+
+      function draw() {
+        ctx.clearRect(0, 0, size, size);
+        let angle = startAngle;
+        slices.forEach((s, idx) => {
+          const sweep = s.pct * Math.PI * 2 * Math.min(progress, 1);
+          const adj = progress > idx / slices.length ? Math.min((progress - idx / slices.length) * slices.length, 1) : 0;
+          const thisSweep = s.pct * Math.PI * 2 * adj;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, angle, angle + thisSweep);
+          ctx.closePath();
+          ctx.fillStyle = s.color;
+          ctx.shadowColor = s.color; ctx.shadowBlur = 14;
+          ctx.fill(); ctx.shadowBlur = 0;
+          angle += s.pct * Math.PI * 2;
+        });
+        // Hole
+        ctx.beginPath(); ctx.arc(cx, cy, inner, 0, Math.PI * 2);
+        ctx.fillStyle = '#0B0E14'; ctx.fill();
+        // Center text
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.font = `bold ${Math.floor(size * 0.13)}px Inter`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('2,847', cx, cy - 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.font = `${Math.floor(size * 0.07)}px Inter`;
+        ctx.fillText('Issues', cx, cy + 12);
+
+        if (progress < 1) { progress += 0.025; requestAnimationFrame(draw); }
+      }
+
+      const lo = new IntersectionObserver(e => { if (e[0].isIntersecting) { draw(); lo.disconnect(); } }, { threshold: 0.4 });
+      lo.observe(canvas);
+    }
+    drawDoughnut();
+
+    // ─── MINI LINE CHART ──────────────────────────────────────────────────────────
+    function drawMiniLine() {
+      const canvas = document.getElementById('miniLine');
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.parentElement.clientWidth - 64;
+      const H = 120;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+
+      const weeks = [98, 121, 143, 108, 165, 132, 178, 213, 148, 190, 156, 201];
+      const mx = Math.max(...weeks), mn = Math.min(...weeks);
+      function toX(i) { return (i / (weeks.length - 1)) * W; }
+      function toY(v) { return H - ((v - mn) / (mx - mn)) * (H - 20) - 10; }
+
+      let progress = 0;
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const pts = Math.floor(progress * (weeks.length - 1));
+        if (pts < 1) { if (progress < 1) { progress += 0.02; requestAnimationFrame(draw); } return; }
+
+        // Area
+        const ag = ctx.createLinearGradient(0, 0, 0, H);
+        ag.addColorStop(0, 'rgba(0,255,133,0.2)'); ag.addColorStop(1, 'transparent');
+        ctx.fillStyle = ag;
+        ctx.beginPath(); ctx.moveTo(toX(0), toY(weeks[0]));
+        for (let i = 1; i <= pts; i++) ctx.lineTo(toX(i), toY(weeks[i]));
+        ctx.lineTo(toX(pts), H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+
+        // Line
+        ctx.strokeStyle = '#00FF85'; ctx.lineWidth = 2; ctx.shadowColor = '#00FF85'; ctx.shadowBlur = 8;
+        ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(toX(0), toY(weeks[0]));
+        for (let i = 1; i <= pts; i++) ctx.lineTo(toX(i), toY(weeks[i]));
+        ctx.stroke(); ctx.shadowBlur = 0;
+
+        if (progress < 1) { progress += 0.022; requestAnimationFrame(draw); }
+      }
+      const lo = new IntersectionObserver(e => { if (e[0].isIntersecting) { draw(); lo.disconnect(); } }, { threshold: 0.4 });
+      lo.observe(canvas);
+    }
+    drawMiniLine();
+  </script>
+</body>
+
+</html>
