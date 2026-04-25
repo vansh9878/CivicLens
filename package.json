@@ -1,0 +1,13 @@
+{
+  "name": "civiclens",
+  "version": "1.0.0",
+  "description": "CivicLens - City Intelligence Platform",
+  "main": "login.html",
+  "scripts": {
+    "start": "serve .",
+    "build": "echo 'No build step required for static files'"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
