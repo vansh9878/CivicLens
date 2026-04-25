@@ -4,8 +4,7 @@
   "description": "CivicLens - City Intelligence Platform",
   "main": "login.html",
   "scripts": {
-    "start": "serve .",
-    "build": "echo 'No build step required for static files'"
+    "start": "serve ."
   },
   "devDependencies": {
     "serve": "^14.2.1"
